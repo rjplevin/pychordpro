@@ -4,6 +4,20 @@
 {tempo: 120}
 {duration: 3:30}
 
-a
-b
-c
+Intro: (x2)
+[Bm A E A]
+[Bm A E]
+
+Verse 1:
+[Bm A E A Bm A E]
+[Bm]I told Al[A]thea I was [E]feeling los[A]t, [Bm]lacking in [A]some di[E]rection.
+[Bm A E A Bm A E]
+[Bm]Althea told [A]me upon [E]scruti[A]ny that my [Bm]back might [A]need pro[E]tection.
+[A C#m D A]
+I [A]told Althea that [C#m]treachery was [D]tearing me [A]limb from limb.
+[C#m E Bm A E]
+Al[C#m]thea told me better [E]cool down boy, [Bm]settle back,[A] easy Jim.[E]
+
+Solo: (x2)
+[Bm A E A]
+[Bm A E]

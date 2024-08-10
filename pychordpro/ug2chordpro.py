@@ -47,16 +47,17 @@ def convert_to_objects(text):
 
     for line in lines:
         if line == '':
-            obj = None
+            objs.append(line) # insert a blank line
+            obj = None        # don't treat as lyrics
             continue
 
+        # See if the line is all chords
         words = re.split('[-\s]+', line)
         is_chords = all(not word or chord_prog.match(word) for word in words) # ignore empty strings
+
         if is_chords:
-            # print(f"Chords: '{line}'")
             obj = Chords([Chord(name=m.group(0), position=m.start())
                           for m in re.finditer(chord_prog, line)])
-            # print(f"Chords: {obj}")
         else:
             obj2 = line
 
@@ -72,13 +73,31 @@ def convert_to_objects(text):
 
 def convert_to_chordpro(text):
     objs = convert_to_objects(text)
+    lines = []
 
     for lineno, obj in enumerate(objs):
         print(f"{lineno}: {obj}")
 
-    lines = ['a', 'b', 'c']     # place holder
-    converted = '\n'.join(lines)
-    return converted
+        if type(obj) is Line:
+            text = obj.lyrics
+
+            # insert chords into lyrics in reverse order
+            for chord in reversed(obj.chords.chords):
+                name = chord.name
+                pos = chord.position
+                text = text[:pos] + f"[{name}]" + text[pos:]
+
+        elif type(obj) is Chords:
+            chords = ' '.join([chord.name for chord in obj.chords])
+            text = f"[{chords}]"
+
+        else: # text
+            text = obj
+
+        lines.append(text)
+
+    revised = '\n'.join(lines)
+    return revised
 
 
 metadata = '''{{book: Sing-along}}
