@@ -41,14 +41,13 @@ chord_prog = re.compile(chord_pattern)
 
 def convert_to_objects(text):
     lines = text.split('\n')
+    line_count = len(lines)
 
     objs = []
-    obj = None
 
     for line in lines:
-        if line == '':
-            objs.append(line) # insert a blank line
-            obj = None        # don't treat as lyrics
+        if re.match('^\s*$', line):
+            objs.append('')   # insert a blank line
             continue
 
         # See if the line is all chords
@@ -56,20 +55,44 @@ def convert_to_objects(text):
         is_chords = all(not word or chord_prog.match(word) for word in words) # ignore empty strings
 
         if is_chords:
-            obj = Chords([Chord(name=m.group(0), position=m.start())
-                          for m in re.finditer(chord_prog, line)])
+            chords = Chords([Chord(name=m.group(0), position=m.start())
+                             for m in re.finditer(chord_prog, line)])
+            objs.append(chords)
+
         else:
-            obj2 = line
+            objs.append(line)
 
-            # If previous object is Chords, join them as a Line tuple
-            if obj2 and type(obj) is Chords:
-                obj = Line(chords=obj, lyrics=obj2)
+    final = []
+    prev = None
+
+    for obj in objs:
+        if not obj:
+            final.append('')
+            prev = None
+
+        if type(obj) is Chords:
+            if prev:
+                final.append(prev)  # not for embedding in lyrics
+
+            prev = obj      # save this in case next line is lyrics
+
+        else: # => type(obj) is not Chords
+            if type(prev) is Chords:
+                final.append(Line(chords=prev, lyrics=obj))
+                prev = None
             else:
-                obj = obj2
+                final.append(obj)
+                prev = None     # obj is not Chords
 
-        objs.append(obj)
+        # elif not prev: # and type(obj) is necessarily not Chords
+        #     final.append(obj)
+        #     prev = obj
 
-    return objs
+    if prev:
+        # final line was Chords
+        final.append(prev)
+
+    return final
 
 def convert_to_chordpro(text):
     objs = convert_to_objects(text)
