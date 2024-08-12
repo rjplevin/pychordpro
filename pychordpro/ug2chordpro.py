@@ -1,10 +1,7 @@
 #!/usr/bin/env python3
 
-# ToDo: invoke ug scraper to download file:
-#    ug fetch -id 123456
-#
-# - run the cmd
-# - collect the text
+# Optionally uses https://github.com/Pilfer/ultimate-guitar-scraper (as "ug")
+# to download files from Ultimate Guitar.
 
 import argparse
 import sys
