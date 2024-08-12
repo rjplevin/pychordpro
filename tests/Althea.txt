@@ -1,4 +1,4 @@
-{book: Sing-along}
+{book: My Songbook}
 {title: Althea}
 {artist: Grateful Dead}
 {tempo: 120}

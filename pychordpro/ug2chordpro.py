@@ -1,6 +1,13 @@
 #!/usr/bin/env python3
 
+# ToDo: invoke ug scraper to download file:
+#    ug fetch -id 123456
+#
+# - run the cmd
+# - collect the text
+
 import argparse
+import sys
 from collections import namedtuple
 import os
 import re
@@ -12,13 +19,18 @@ Line = namedtuple('Line', ['chords', 'lyrics'])
 def parseArgs():
     parser = argparse.ArgumentParser(description='Fix up exported Ultimate Guitar files for ChordPro conversion')
 
-    parser.add_argument('files', nargs='+', help='The files to tweak')
+    parser.add_argument('-a', '--artist',
+                        help='The song artist. Taken from file if present. Default is YYY.')
 
-    parser.add_argument('-a', '--artist', default='YYY',
-                        help='The song artist. Default is YYY.')
+    parser.add_argument('-b', '--book', default='ZZZ',
+                        help='The songbook this belongs to. Default is ZZZ.')
 
     parser.add_argument('-d', '--duration', default='3:30',
                         help='The song duration. Default is 3:30')
+
+    parser.add_argument('-i', '--input',
+                        help='The UG-format file to convert. Use "-i -" for stdin. '
+                        'Required if not using --ug-id to download the file.')
 
     parser.add_argument('-m', '--tempo', default='120',
                         help='The song tempo. Default is 120')
@@ -29,20 +41,26 @@ def parseArgs():
     parser.add_argument('-o', '--output',
                         help='The output file. Default is to overwrite the input file.')
 
-    parser.add_argument('-t', '--title', default='XXX',
-                        help='The song title. Default is XXX.')
+    parser.add_argument('-u', '--ug-id',
+                        help='Run the ultimate-guitar-scraper (as "ug") using the given '
+                             'song ID to download the UG-format file')
+
+    parser.add_argument('-t', '--title',
+                        help='The song title. Taken from file if present. Default is XXX.')
 
 
     args = parser.parse_args()
     return args
+
+# e.g., "Song name: Althea  by  Grateful Dead"
+song_pattern = r"^Song name: (.*)$"
+song_prog = re.compile(song_pattern, flags=re.MULTILINE)
 
 chord_pattern = r"([A-G][b\#]?)(sus|aug|dim|maj|min|ma|Ma|mi|M|m)?(2|4|5|6|7|9|11|13)?(/[A-G][b\#]?)?"
 chord_prog = re.compile(chord_pattern)
 
 def convert_to_objects(text):
     lines = text.split('\n')
-    line_count = len(lines)
-
     objs = []
 
     for line in lines:
@@ -101,7 +119,7 @@ def convert_to_chordpro(text):
     lines = []
 
     for lineno, obj in enumerate(objs):
-        print(f"{lineno}: {obj}")
+        # print(f"{lineno}: {obj}")
 
         if type(obj) is Line:
             text = obj.lyrics
@@ -125,48 +143,69 @@ def convert_to_chordpro(text):
     return revised
 
 
-metadata = '''{{book: Sing-along}}
-{{title: {title}}}
+def main():
+    metadata = '''{{title: {title}}}
 {{artist: {artist}}}
 {{tempo: {tempo}}}
 {{duration: {duration}}}
-
 '''
-
-def main():
 
     args = parseArgs()
 
-    if args.output is not None and len(args.files) > 1:
-        raise Exception("You can specify output name when processing one file only.")
+    title = args.title
+    artist = args.artist
 
     make_backup = not (args.no_backup or args.output)
 
-    for file in args.files:
+    file = args.input
 
+    if args.ug_id:
+        import subprocess
+        cmd = f"ug fetch -id '{args.ug_id}'"
+        bytes = subprocess.check_output(cmd, shell=True)
+        text = bytes.decode("utf-8")
+
+    elif file == '-':
+        text = str(sys.stdin.read())
+
+    else:
         if make_backup:
             backup = file + '~'
             os.rename(file, backup)     # create backup of original
-            input = backup
-        else:
-            input = file
+            file = backup
 
-        with open(input, 'r') as f:
+        with open(file, 'r') as f:
             text = f.read()
 
-        revised = re.sub(r'\n\n', '\n', text, flags=re.MULTILINE)
+    text = re.sub(r'\r\n', '\n', text, flags=re.MULTILINE)
 
-        pattern = r'\[((Chorus|Verse|Bridge|Intro|Outro|Solo|Instrumental)\s*\d*)\]'
-        revised = re.sub(pattern, r'\1:', revised)
+    # seems this is not required with auto-download using ug program
+    if file and file != '-':
+        text = re.sub(r'\n\n', '\n', text)
 
-        revised = convert_to_chordpro(revised)
-        output = args.output or file
+    # extract title and artist from file, if present
+    if (m := song_prog.search(text)):
+        # delete the line
+        text = re.sub(m.group(0), '', text)
 
-        with open(output, 'w') as f:
-            f.write(metadata.format(title=args.title,
-                                    artist=args.artist,
-                                    tempo=args.tempo,
-                                    duration=args.duration))
-            f.write(revised)
+        t, a = m.group(1).split("  by  ")
+        title = title or t      # don't overwrite cmd line args
+        artist = artist or a
+
+    pattern = r'\[((Chorus|Verse|Bridge|Intro|Outro|Solo|Instrumental)\s*\d*)\]'
+    text = re.sub(pattern, r'\1:', text)
+
+    text = convert_to_chordpro(text)
+    output = args.output or file
+
+    with open(output, 'w') as f:
+        if args.book:
+            f.write(f"{{book: {args.book}}}\n")
+
+        f.write(metadata.format(title=title or 'XXX',
+                                artist=artist or 'YYY',
+                                tempo=args.tempo,
+                                duration=args.duration))
+        f.write(text)
 
 main()
