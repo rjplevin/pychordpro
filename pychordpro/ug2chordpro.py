@@ -66,27 +66,29 @@ def convert_to_objects(text):
     prev = None
 
     for obj in objs:
-        if not obj:
-            final.append('')
-            prev = None
+        if obj == '':
+            if type(prev) is Chords:
+                final.append(prev)
 
-        if type(obj) is Chords:
+            if prev != '':  # avoid extra blank lines
+                final.append('')
+
+            prev = obj
+
+        elif type(obj) is Chords:
             if prev:
                 final.append(prev)  # not for embedding in lyrics
 
             prev = obj      # save this in case next line is lyrics
 
-        else: # => type(obj) is not Chords
+        else: # => obj is non-empty text
+
             if type(prev) is Chords:
                 final.append(Line(chords=prev, lyrics=obj))
                 prev = None
             else:
                 final.append(obj)
                 prev = None     # obj is not Chords
-
-        # elif not prev: # and type(obj) is necessarily not Chords
-        #     final.append(obj)
-        #     prev = obj
 
     if prev:
         # final line was Chords
@@ -152,7 +154,7 @@ def main():
         with open(input, 'r') as f:
             text = f.read()
 
-        revised = re.sub('\n\n', '\n', text, flags=re.MULTILINE)
+        revised = re.sub(r'\n\n', '\n', text, flags=re.MULTILINE)
 
         pattern = r'\[((Chorus|Verse|Bridge|Intro|Outro|Solo|Instrumental)\s*\d*)\]'
         revised = re.sub(pattern, r'\1:', revised)
