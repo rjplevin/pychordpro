@@ -1,6 +1,13 @@
 # pychordpro
 
-Convert songs from Ultimate Guitar format (chords above lyrics) to ChordPro format (chords embedded in lyrics). 
+Convert songs from Ultimate Guitar format (chords above lyrics) to ChordPro format (chords embedded in lyrics).
+
+This script is not intended to be comprehensive and complete. Rather, it provides a "pretty close"
+version of the song in ChordPro format that can be edited a little to meet my (and perhaps your) needs.
+
+The meta-data inserted at the top of the file is designed to work with 
+[https://www.liveprompter.com/](LivePrompter 2). Command-line arguments allow you to provide
+the song duration, tempo, and "book" the song should be part of.
 
 This script can process a downloaded text file, or, more conveniently, use the
 [ultimate-guitar-scraper](https://github.com/Pilfer/ultimate-guitar-scraper) 
