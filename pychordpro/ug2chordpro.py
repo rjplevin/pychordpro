@@ -39,8 +39,8 @@ def parseArgs():
                         help='The output file. Default is to overwrite the input file.')
 
     parser.add_argument('-u', '--ug-id',
-                        help='Run the ultimate-guitar-scraper (as "ug") using the given '
-                             'song ID to download the UG-format file')
+                        help='Run the ultimate-guitar-scraper (as value of environment var $UG or "ug")'
+                             'using the given song ID to download the UG-format file')
 
     parser.add_argument('-t', '--title',
                         help='The song title. Taken from file if present. Default is XXX.')
@@ -56,6 +56,9 @@ song_prog = re.compile(song_pattern, flags=re.MULTILINE)
 chord_pattern = r"([A-G][b\#]?)(sus|aug|dim|maj|min|ma|Ma|mi|M|m)?(2|4|5|6|7|9|11|13)?(/[A-G][b\#]?)?"
 chord_prog = re.compile(chord_pattern)
 
+section_pattern = r'\[((Chorus|Verse|Bridge|Intro|Outro|Solo|Instrumental)\s*\d*)\]'
+section_prog = re.compile(section_pattern)
+
 def convert_to_objects(text):
     lines = text.split('\n')
     objs = []
@@ -63,19 +66,25 @@ def convert_to_objects(text):
     for line in lines:
         if re.match('^\s*$', line):
             objs.append('')   # insert a blank line
-            continue
 
-        # See if the line is all chords
-        words = re.split('[-\s]+', line)
-        is_chords = all(not word or chord_prog.match(word) for word in words) # ignore empty strings
-
-        if is_chords:
-            chords = Chords([Chord(name=m.group(0), position=m.start())
-                             for m in re.finditer(chord_prog, line)])
-            objs.append(chords)
+        elif (m := section_prog.match(line)):
+            old_tag = m.group(0)
+            new_tag = m.group(1) + ':'
+            line = line.replace(old_tag, new_tag)
+            objs.append(line)
 
         else:
-            objs.append(line)
+            # See if the line is all chords
+            words = re.split('[-\|\s]+', line)
+            is_chords = all(not word or chord_prog.match(word) for word in words) # ignore empty strings
+
+            if is_chords:
+                chords = Chords([Chord(name=m.group(0), position=m.start())
+                                 for m in re.finditer(chord_prog, line)])
+                objs.append(chords)
+
+            else:
+                objs.append(line)
 
     final = []
     prev = None
@@ -154,11 +163,13 @@ def main():
 
     make_backup = not (args.no_backup or args.output)
 
+    ug = os.environ.get('UG') or 'ug'
+
     file = args.input
 
     if args.ug_id:
         import subprocess
-        cmd = f"ug fetch -id '{args.ug_id}'"
+        cmd = f"{ug} fetch -id '{args.ug_id}'"
         bytes = subprocess.check_output(cmd, shell=True)
         text = bytes.decode("utf-8")
 
@@ -189,11 +200,8 @@ def main():
         title = title or t      # don't overwrite cmd line args
         artist = artist or a
 
-    pattern = r'\[((Chorus|Verse|Bridge|Intro|Outro|Solo|Instrumental)\s*\d*)\]'
-    text = re.sub(pattern, r'\1:', text)
-
     text = convert_to_chordpro(text)
-    output = args.output or file
+    output = args.output or f"{title}.txt"
 
     with open(output, 'w') as f:
         if args.book:

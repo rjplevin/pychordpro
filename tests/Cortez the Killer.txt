@@ -71,6 +71,5 @@ He came [Em]dancing across the water
 [Am7]What a killer[Am7]
 
 [Outro Solo]
-| Em   | D    | Am7  | Am7  |
-| Em   | D    | Am7  |
-(fade out)
+[Em D Am7 Am7]
+(f[Em]ade out[D])[Am7]
