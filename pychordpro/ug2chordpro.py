@@ -29,6 +29,9 @@ def parseArgs():
                         help='The UG-format file to convert. Use "-i -" for stdin. '
                         'Required if not using --ug-id to download the file.')
 
+    parser.add_argument('-l', '--lyrics-only', action='store_true',
+                        help='Do not include chords, lyrics only.')
+
     parser.add_argument('-m', '--tempo', default='120',
                         help='The song tempo. Default is 120')
 
@@ -45,6 +48,9 @@ def parseArgs():
     parser.add_argument('-t', '--title',
                         help='The song title. Taken from file if present. Default is XXX.')
 
+    parser.add_argument('--song-index',
+                        help='Download songs using the Ultimate Guitar indices indicated in the ' 
+                             'given CSV file. Can be combined with with --lyrics-only.')
 
     args = parser.parse_args()
     return args
@@ -120,7 +126,7 @@ def convert_to_objects(text):
 
     return final
 
-def convert_to_chordpro(text):
+def convert_to_chordpro(text, lyrics_only):
     objs = convert_to_objects(text)
     lines = []
 
@@ -130,13 +136,17 @@ def convert_to_chordpro(text):
         if type(obj) is Line:
             text = obj.lyrics
 
-            # insert chords into lyrics in reverse order
-            for chord in reversed(obj.chords.chords):
-                name = chord.name
-                pos = chord.position
-                text = text[:pos] + f"[{name}]" + text[pos:]
+            if not lyrics_only:
+                # insert chords into lyrics in reverse order
+                for chord in reversed(obj.chords.chords):
+                    name = chord.name
+                    pos = chord.position
+                    text = text[:pos] + f"[{name}]" + text[pos:]
 
         elif type(obj) is Chords:
+            if lyrics_only:
+                continue
+
             chords = ' '.join([chord.name for chord in obj.chords])
             text = f"[{chords}]"
 
@@ -149,27 +159,19 @@ def convert_to_chordpro(text):
     return revised
 
 
-def main():
+def process_song(file=None, title=None, artist=None, ug_id=None, output=None,
+                 book=None, tempo=None, duration=None, lyrics_only=False,
+                 make_backup=False):
     metadata = '''{{title: {title}}}
 {{artist: {artist}}}
 {{tempo: {tempo}}}
 {{duration: {duration}}}
 '''
 
-    args = parseArgs()
-
-    title = args.title
-    artist = args.artist
-
-    make_backup = not (args.no_backup or args.output)
-
-    ug = os.environ.get('UG') or 'ug'
-
-    file = args.input
-
-    if args.ug_id:
+    if ug_id:
         import subprocess
-        cmd = f"{ug} fetch -id '{args.ug_id}'"
+        ug = os.environ.get('UG') or 'ug'
+        cmd = f"{ug} fetch -id '{ug_id}'"
         bytes = subprocess.check_output(cmd, shell=True)
         text = bytes.decode("utf-8")
 
@@ -200,17 +202,44 @@ def main():
         title = title or t      # don't overwrite cmd line args
         artist = artist or a
 
-    text = convert_to_chordpro(text)
-    output = args.output or f"{title}.txt"
+    text = convert_to_chordpro(text, lyrics_only)
+    output = output or f"{title}.txt"
 
     with open(output, 'w') as f:
-        if args.book:
-            f.write(f"{{book: {args.book}}}\n")
+        if lyrics_only:
+            f.write(f"{title}\n")
+            f.write(f"by {artist}\n\n")
+        else:
+            if book:
+                f.write(f"{{book: {book}}}\n")
 
-        f.write(metadata.format(title=title or 'XXX',
-                                artist=artist or 'YYY',
-                                tempo=args.tempo,
-                                duration=args.duration))
+            f.write(metadata.format(title=title or 'XXX',
+                                    artist=artist or 'YYY',
+                                    tempo=tempo,
+                                    duration=duration))
         f.write(text)
+
+def main():
+    args = parseArgs()
+    song_index = args.song_index
+    make_backup = not (args.no_backup or args.output)
+
+    if song_index:
+        import pandas as pd
+        song_index_df = pd.read_csv(song_index)
+
+        for index, row in song_index_df.iterrows():
+            title = f"{index:02d} {row.title}.txt"
+            print(f"Generating '{title}'...")
+            process_song(ug_id=row.ug_id,
+                         output=title,
+                         lyrics_only=args.lyrics_only,
+                         make_backup=make_backup)
+
+    else:
+        process_song(file=args.input, title=args.title, artist=args.artist,
+                     ug_id=args.ug_id, output=args.output, book=args.book,
+                     tempo=args.tempo, duration=args.duration,
+                     lyrics_only=args.lyrics_only, make_backup=make_backup)
 
 main()

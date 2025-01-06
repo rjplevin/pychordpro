@@ -16,7 +16,7 @@ to scrape the necessary bit from the Ultimate Guitar page of interest.
 To use ultimate-guitar-scraper:
 
 1. Clone and build [ultimate-guitar-scraper](https://github.com/Pilfer/ultimate-guitar-scraper)
-2. Set the environment variable "UG" to the path do the ultimate-guitar-scraper executable.
+2. Set the environment variable "UG" to the path to the ultimate-guitar-scraper executable.
 
 Then, to process a song, search for the song file on
 [https://www.ultimate-guitar.com/](Ultimate Guitar) and copy the numeric portion 
