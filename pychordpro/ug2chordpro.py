@@ -148,7 +148,7 @@ def convert_to_chordpro(text, lyrics_only):
                 continue
 
             chords = ' '.join([chord.name for chord in obj.chords])
-            text = f"[{chords}]"
+            text = f"[{chords}]" if chords else ""
 
         else: # text
             text = obj
