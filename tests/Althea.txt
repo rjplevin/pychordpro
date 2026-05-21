@@ -4,7 +4,7 @@
 {tempo: 120}
 {duration: 3:30}
 
-Intro: (x2)
+Intro:
 
 [Bm A E A]
 [Bm A E]
@@ -20,7 +20,7 @@ Al[C#m]thea told me better [E]cool down boy, [Bm]settle back,[A] easy Jim.[E]
 [Bm A E A]
 [Bm A E]
 
-Solo: (x2)
+Solo:
 
 [Bm A E A]
 [Bm A E]
